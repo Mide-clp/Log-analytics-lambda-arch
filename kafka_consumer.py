@@ -16,5 +16,4 @@ else:
 
 
 for msg in consumer:
-    print(msg)
     print(msg.value)
