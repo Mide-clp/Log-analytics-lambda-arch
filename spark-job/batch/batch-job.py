@@ -1,8 +1,11 @@
 from pyspark.sql import SparkSession
-import findspark
+from pyspark.sql import functions as func
 
-findspark.init()
-TOPIC = "log_flow"
+spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
+    "log-analytics").getOrCreate()
 
-if __name__ == "__main__":
-    spark = SparkSession.builder.master("local[*]").appName("log-analytics").getOrCreate()
+df = spark.read.option("header", "true") \
+    .option("inferSchema", "true") \
+    .load("hdfs://namenode:8020/data/")
+df.count()
+df.show()

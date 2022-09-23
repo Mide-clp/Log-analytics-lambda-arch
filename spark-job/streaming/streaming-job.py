@@ -1,4 +1,4 @@
-import findspark
+# import findspark
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as func
 
@@ -27,21 +27,34 @@ def format_logData(raw_df):
 
 
 if __name__ == "__main__":
-    spark = SparkSession.builder.master("local[*]").appName("log-analytics").getOrCreate()
+    spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName("log-analytics").getOrCreate()
 
     df = spark.readStream \
         .format("kafka") \
-        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("kafka.bootstrap.servers", "kafka:29092") \
         .option("subscribe", TOPIC) \
-        .option("checkpointLocation", "checkpoint") \
         .option("startingOffsets", "latest") \
         .load()
 
     parsed_df = format_logData(df)
+    parsed_df.writeStream \
+        .partitionBy("timestamp") \
+        .format("parquet") \
+        .option("checkpointLocation", "checkpoint") \
+        .outputMode("append") \
+        .start(path="hdfs://namenode:8020/data/") \
+        .awaitTermination()
 
     parsed_df.writeStream \
+        .option("checkpointLocation", "checkpoint") \
         .format("console") \
         .outputMode("append") \
         .start() \
         .awaitTermination()
     spark.stop()
+
+# spark-submit --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 ./spark-job/streaming/streaming-job.py
+
+ # docker exec spark-master /spark/bin/spark-submit --master spark://localhost:7077 --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 opt/spark_store/streaming/streaming-job.py
+
+ # docker exec spark-master /spark/bin/spark-submit  --master spark://localhost:7077 opt/spark_store/batch/batch-job.py
