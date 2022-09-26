@@ -6,5 +6,5 @@ use log_analytics;
 
 // Create tables
 
-CREATE TABLE IF NOT EXISTS status_code(status int, hour int, date text, crawler text, count int);
+CREATE TABLE IF NOT EXISTS status_code(status int, hour int, date text, crawler text, count int, PRIMARY KEY(status, hour));
 
