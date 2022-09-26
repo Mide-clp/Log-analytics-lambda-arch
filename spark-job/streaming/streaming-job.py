@@ -27,6 +27,44 @@ def format_logData(raw_df):
     return data
 
 
+def parse_date_and_time(data):
+    d2 = data.withColumn("timestamp", parse_datetime(func.col("timestamp")).cast("timestamp"))
+    d2 = d2.withColumn("hour", func.hour(func.col("timestamp")))
+    d2 = d2.withColumn("day", func.dayofmonth(func.col("timestamp")))
+    d2 = d2.withColumn("month", func.month(func.col("timestamp")))
+    d2 = d2.withColumn("year", func.year(func.col("timestamp")))
+    d2 = d2.withColumn("date", func.to_date(func.col("timestamp")))
+
+    return d2
+
+
+def select_crawlers(data):
+    crawled_df = data.withColumn("crawler", func.regexp_extract("useragent", r"(Mozilla\/5\.0 \(compatible;"
+                                                                             r" Googlebot\/2\.1; \+http:\/\/www\.google\."
+                                                                             r"com\/bot\.html\)|Safari\/537\.36 "
+                                                                             r"\(compatible; Googlebot\/2\.1; \+http:"
+                                                                             r"\/\/www\.google\.com\/bot\.html\)$|Mozilla"
+                                                                             r"\/5\.0 AppleWebKit\/537\.36 \(KHTML, like "
+                                                                             r"Gecko; compatible; Googlebot\/2\.1; \+http:"
+                                                                             r"\/\/www\.google\.com\/bot\.html\)|Mozilla"
+                                                                             r"\/5\.0 \(compatible; bingbot\/2\.0; \+http"
+                                                                             r":\/\/www\.bing\.com\/bingbot\.htm\))",
+                                                                1))
+    comp_crawler_df = crawled_df.withColumn("crawler", func.when(
+        func.col("crawler") == "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Googlebot Desktop").when(func.col(
+        "crawler") == "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; "
+                      "+http://www.google.com/bot.html)", "Googlebot Desktop").when(
+        func.col("crawler") == "Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Googlebot Smartphone").when(
+        func.col("crawler") == "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+        "Bingbot Desktop"))
+
+    comp_crawler_df = comp_crawler_df.where(func.col("crawler") != "")
+
+    return comp_crawler_df
+
+
 @func.udf()
 def parse_datetime(s):
     year = int(s[5:9])
@@ -53,17 +91,6 @@ def parse_datetime(s):
     return str(new_date)
 
 
-def parse_date_and_time(data):
-    d2 = data.withColumn("timestamp", parse_datetime(func.col("timestamp")).cast("timestamp"))
-    d2 = d2.withColumn("hour", func.hour(func.col("timestamp")))
-    d2 = d2.withColumn("day", func.dayofmonth(func.col("timestamp")))
-    d2 = d2.withColumn("month", func.month(func.col("timestamp")))
-    d2 = d2.withColumn("year", func.year(func.col("timestamp")))
-    d2 = d2.withColumn("date", func.to_date(func.col("timestamp")))
-
-    return d2
-
-
 if __name__ == "__main__":
     spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
         "log-analytics").getOrCreate()
@@ -75,13 +102,14 @@ if __name__ == "__main__":
         .option("startingOffsets", "latest") \
         .load()
 
-    df.select(func.months())
+    parsed_df = df(df)
 
-    df = df.withColumn("timestamp", func.regexp_replace("timestamp", r"Jan", "1").alias("timestamp"))
+    df = parsed_df.withColumn("timestamp", func.regexp_replace("timestamp", r"Jan", "1").alias("timestamp"))
 
     parse_df_datetime = parse_date_and_time(df)
 
-    parsed_df = format_logData(df)
+    crawled_df = select_crawlers(parse_df_datetime)
+
     parsed_df.writeStream \
         .partitionBy("timestamp") \
         .format("parquet") \
