@@ -1,6 +1,7 @@
-# import findspark
+import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as func
+from pyspark.sql.types import TimestampType
 
 TOPIC = "log_flow"
 
@@ -26,8 +27,46 @@ def format_logData(raw_df):
     return data
 
 
+@func.udf()
+def parse_datetime(s):
+    year = int(s[5:9])
+    month = int(s[3])
+
+    day = s[0:2]
+    if day[0] == "0":
+        day = day[1]
+
+    hour = s[10:12]
+    if hour[0] == "0":
+        hour = hour[1]
+
+    minute = s[13:15]
+    if minute[0] == "0":
+        minute = minute[1]
+
+    second = s[16:18]
+    if second[0] == "0":
+        second = second[1]
+
+    new_date = datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
+
+    return str(new_date)
+
+
+def parse_date_and_time(data):
+    d2 = data.withColumn("timestamp", parse_datetime(func.col("timestamp")).cast("timestamp"))
+    d2 = d2.withColumn("hour", func.hour(func.col("timestamp")))
+    d2 = d2.withColumn("day", func.dayofmonth(func.col("timestamp")))
+    d2 = d2.withColumn("month", func.month(func.col("timestamp")))
+    d2 = d2.withColumn("year", func.year(func.col("timestamp")))
+    d2 = d2.withColumn("date", func.to_date(func.col("timestamp")))
+
+    return d2
+
+
 if __name__ == "__main__":
-    spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName("log-analytics").getOrCreate()
+    spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
+        "log-analytics").getOrCreate()
 
     df = spark.readStream \
         .format("kafka") \
@@ -36,25 +75,31 @@ if __name__ == "__main__":
         .option("startingOffsets", "latest") \
         .load()
 
+    df.select(func.months())
+
+    df = df.withColumn("timestamp", func.regexp_replace("timestamp", r"Jan", "1").alias("timestamp"))
+
+    parse_df_datetime = parse_date_and_time(df)
+
     parsed_df = format_logData(df)
     parsed_df.writeStream \
         .partitionBy("timestamp") \
         .format("parquet") \
         .option("checkpointLocation", "checkpoint") \
         .outputMode("append") \
-        .start(path="hdfs://namenode:8020/data/") \
-        .awaitTermination()
+        .start(path="hdfs://namenode:8020/data/")
 
     parsed_df.writeStream \
         .option("checkpointLocation", "checkpoint") \
         .format("console") \
         .outputMode("append") \
-        .start() \
-        .awaitTermination()
+        .start()
+
+    parsed_df.awaitTermination()
     spark.stop()
 
 # spark-submit --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 ./spark-job/streaming/streaming-job.py
 
- # docker exec spark-master /spark/bin/spark-submit --master spark://localhost:7077 --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 opt/spark_store/streaming/streaming-job.py
+# docker exec spark-master /spark/bin/spark-submit --master spark://localhost:7077 --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 opt/spark_store/streaming/streaming-job.py
 
- # docker exec spark-master /spark/bin/spark-submit  --master spark://localhost:7077 opt/spark_store/batch/batch-job.py
+# docker exec spark-master /spark/bin/spark-submit  --master spark://localhost:7077 opt/spark_store/batch/batch-job.py
