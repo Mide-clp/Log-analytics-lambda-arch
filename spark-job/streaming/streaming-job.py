@@ -1,4 +1,5 @@
 import datetime
+from pyspark.sql.window import Window
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as func
 from pyspark.sql.types import TimestampType
@@ -108,7 +109,7 @@ def parse_datetime(s):
 
 
 def write_to_cassandra(comp_df, batch_id):
-    comp_df.write\
+    comp_df.write \
         .format("org.apache.spark.sql.cassandra") \
         .option("spark.cassandra.connection.host", "127.0.0.1") \
         .option("spark.cassandra.connection.port", "9042") \
@@ -139,16 +140,36 @@ if __name__ == "__main__":
 
     crawler_df = select_crawlers(parse_df_datetime)
 
+    # crawler_df.writeStream \
+    #     .partitionBy("day", "month", "year") \
+    #     .format("parquet") \
+    #     .option("checkpointLocation", "checkpoint") \
+    #     .outputMode("append") \
+    #     .start(path="hdfs://namenode:8020/data/")
+
     daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("crawler"),
                                      func.col("date")).groupby("status", "hour", "date", "crawler") \
         .agg(func.count("status").alias("count"))
 
-    crawler_df.writeStream \
-        .partitionBy("day", "month", "year") \
-        .format("parquet") \
-        .option("checkpointLocation", "checkpoint") \
-        .outputMode("append") \
-        .start(path="hdfs://namenode:8020/data/")
+    file_type_data = crawler_df.withColumn("file_type", func.regexp_extract("endpoint",
+                                                                            r"\.(css|jpg|PHP|html|png|gif|jpeg|json|js)",
+                                                                            1)).where(func.col("file_type") != "")
+
+    file_type_daily = file_type_data.select(func.col("file_type"), func.col("crawler"), func.col("hour"),
+                                            func.col("month"), func.col("year"), func.col("date")).groupBy("file_type",
+                                                                                                           "hour",
+                                                                                                           "month",
+                                                                                                           "year",
+                                                                                                           "date",
+                                                                                                           "crawler").agg(
+        func.count("file_type").alias("count")).orderBy(func.col("hour").asc(), func.col("date").asc())
+
+
+    file_type_daily.writeStream \
+        .option("checkpointLocation", "tmp/checkpoint") \
+        .foreachBatch(write_to_cassandra) \
+        .outputMode("update") \
+        .start()
 
     daily_status.writeStream \
         .option("checkpointLocation", "tmp/checkpoint") \
