@@ -164,6 +164,18 @@ if __name__ == "__main__":
                                                                                                            "crawler").agg(
         func.count("file_type").alias("count")).orderBy(func.col("hour").asc(), func.col("date").asc())
 
+    page_crawler = crawler_df.withColumn("top_directory", func.regexp_extract("endpoint", "(\/m\/\w+|\/\w+)", 1))
+
+    pages_crawled = page_crawler.select("top_directory", "timestamp", "hour", "month", "year", "crawler", func.count("hour").over(
+        Window.partitionBy("top_directory", "hour", "month", "year", "crawler").orderBy(func.asc("timestamp"))).alias(
+        "count")).groupBy("top_directory", "hour", "month", "year", "crawler").agg(
+        func.max("timestamp").alias("latest_timestamp"), func.max("count").alias("frequency"))
+
+    pages_crawled.writeStream \
+        .option("checkpointLocation", "tmp/checkpoint") \
+        .foreachBatch(write_to_cassandra) \
+        .outputMode("update") \
+        .start()
 
     file_type_daily.writeStream \
         .option("checkpointLocation", "tmp/checkpoint") \
