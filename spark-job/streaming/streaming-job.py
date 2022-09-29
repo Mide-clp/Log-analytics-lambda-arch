@@ -108,8 +108,8 @@ def parse_datetime(s):
     return str(new_date)
 
 
-def write_to_cassandra(comp_df, batch_id):
-    comp_df.write \
+def write_to_cassandra_status_code(_status_df, _batch_id):
+    _status_df.write \
         .format("org.apache.spark.sql.cassandra") \
         .option("spark.cassandra.connection.host", "127.0.0.1") \
         .option("spark.cassandra.connection.port", "9042") \
@@ -119,7 +119,38 @@ def write_to_cassandra(comp_df, batch_id):
         .save()
 
 
-# .option("confirm.truncate", "true")
+def write_to_cassandra_file_type(_file_type_df, _batch_id):
+    _file_type_df.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .option("spark.cassandra.connection.host", "127.0.0.1") \
+        .option("spark.cassandra.connection.port", "9042") \
+        .option("keyspace", "log_analytics") \
+        .option("table", "file_type") \
+        .mode("append") \
+        .save()
+
+
+def write_to_cassandra_crawler(_crawler_df, _batch_id):
+    _crawler_df.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .option("spark.cassandra.connection.host", "127.0.0.1") \
+        .option("spark.cassandra.connection.port", "9042") \
+        .option("keyspace", "log_analytics") \
+        .option("table", "crawler_frequency") \
+        .mode("append") \
+        .save()
+
+
+def write_to_cassandra_bot_hit(_bot_hit_df, _batch_id):
+    _bot_hit_df.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .option("spark.cassandra.connection.host", "127.0.0.1") \
+        .option("spark.cassandra.connection.port", "9042") \
+        .option("keyspace", "log_analytics") \
+        .option("table", "bot_hit") \
+        .mode("append") \
+        .save()
+
 
 if __name__ == "__main__":
     spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
@@ -127,6 +158,7 @@ if __name__ == "__main__":
 
     df = spark.readStream \
         .format("kafka") \
+        .option("checkpointLocation", "tmp/checkpoint") \
         .option("kafka.bootstrap.servers", "localhost:9092") \
         .option("subscribe", TOPIC) \
         .option("startingOffsets", "latest") \
@@ -147,9 +179,9 @@ if __name__ == "__main__":
     #     .outputMode("append") \
     #     .start(path="hdfs://namenode:8020/data/")
 
-    daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("crawler"),
-                                     func.col("date")).groupby("status", "hour", "date", "crawler") \
-        .agg(func.count("status").alias("count"))
+    daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("month"), func.col("year"),
+                                     func.col("crawler"), func.col("date")) \
+        .groupby("status", "hour", "month", "year", "date", "crawler").agg(func.count("status").alias("frequency"))
 
     file_type_data = crawler_df.withColumn("file_type", func.regexp_extract("endpoint",
                                                                             r"\.(css|jpg|PHP|html|png|gif|jpeg|json|js)",
@@ -162,33 +194,44 @@ if __name__ == "__main__":
                                                                                                            "year",
                                                                                                            "date",
                                                                                                            "crawler").agg(
-        func.count("file_type").alias("count")).orderBy(func.col("hour").asc(), func.col("date").asc())
+        func.count("file_type").alias("frequency"))
 
     page_crawler = crawler_df.withColumn("top_directory", func.regexp_extract("endpoint", "(\/m\/\w+|\/\w+)", 1))
 
-    pages_crawled = page_crawler.select("top_directory", "timestamp", "hour", "month", "year", "crawler", func.count("hour").over(
-        Window.partitionBy("top_directory", "hour", "month", "year", "crawler").orderBy(func.asc("timestamp"))).alias(
-        "count")).groupBy("top_directory", "hour", "month", "year", "crawler").agg(
-        func.max("timestamp").alias("latest_timestamp"), func.max("count").alias("frequency"))
+    pages_crawled = page_crawler.select("hour", "month", "year", "date", "crawler", "top_directory").groupBy("hour",
+                                                                                                             "month",
+                                                                                                             "year",
+                                                                                                             "crawler",
+                                                                                                             "date",
+                                                                                                             "top_directory").agg(
+        func.count("top_directory").alias("frequency"))
+
+    bot_hit = crawler_df.select("hour", "month", "year", "date", "crawler").groupBy("hour", "month", "year",
+                                                                                    "crawler",
+                                                                                    "date").agg(func.count("hour")
+                                                                                                .alias("frequency"))
+
+    bot_hit.writeStream \
+        .foreachBatch(write_to_cassandra_bot_hit) \
+        .outputMode("update") \
+        .start()
 
     pages_crawled.writeStream \
-        .option("checkpointLocation", "tmp/checkpoint") \
-        .foreachBatch(write_to_cassandra) \
+        .foreachBatch(write_to_cassandra_crawler) \
         .outputMode("update") \
         .start()
 
     file_type_daily.writeStream \
-        .option("checkpointLocation", "tmp/checkpoint") \
-        .foreachBatch(write_to_cassandra) \
+        .foreachBatch(write_to_cassandra_file_type) \
         .outputMode("update") \
         .start()
 
     daily_status.writeStream \
-        .option("checkpointLocation", "tmp/checkpoint") \
-        .foreachBatch(write_to_cassandra) \
+        .foreachBatch(write_to_cassandra_status_code) \
         .outputMode("update") \
-        .start() \
-        .awaitTermination()
+        .start()
+
+    spark.streams.awaitAnyTermination()
     # "confirm.truncate"
     # crawler_df.awaitTermination()
     spark.stop()
