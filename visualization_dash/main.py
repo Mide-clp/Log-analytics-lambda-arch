@@ -11,21 +11,21 @@ from read_cassandra import get_cassandra_data
 app = Dash(__name__)
 
 sql = "SELECT * FROM status_code"
-
-crawler_columns = ["Top directory", "Total Bot Hits"]
-
 data = get_cassandra_data(sql)
-
 data["date"] = pd.to_datetime(data["date"])
 
 d_max = max(data["date"])
 d_min = min(data["date"])
-
 last_30days = d_max - timedelta(days=30)
 last_year = d_max - timedelta(weeks=52)
 
+crawler_columns = ["Top directory", "Total Bot Hits"]
+colors = ["#A424F4", "#143CFC", "#04E474", "#D0EAFC", "#FCBC04", "#FC6CB4", "#FC7C1C", "#944C04", "#CDCDCD", "#1C2C44"]
+
+# dash chart and dashboard design
 app.layout = \
     html.Div([
+        # The header
         html.Div([
             html.H1("Log file Analyzer", style={"position": "absolute", "height": "70px",
                                                 "width": "100%", "top": "20px",
@@ -34,13 +34,16 @@ app.layout = \
                   "height": "113px", "width": "100%",
                   "top": "0px"}),
         html.Div([
+            # Crawler selector
             html.Div([dcc.Dropdown(["Googlebot Desktop", "Googlebot Smartphone", "Bingbot Desktop", "All Bots"],
                                    id="select_bot",
                                    value="All Bots", multi=False, clearable=False, style={"color": "#383838"}),
                       ],
                      style={"backgroundColor": "#23208A", "position": "absolute",
                             "height": "33px", "width": "8%",
-                            "top": "150px", "left": "210px"}),
+                            "top": "150px", "left": "170px"}),
+
+            # Date option selector
             html.Div([dcc.Dropdown(options=([
                 {"label": f"Today ({pd.to_datetime(d_max).date()})",
                  "value": "Today"},
@@ -53,56 +56,63 @@ app.layout = \
                 value="Today", multi=False, clearable=False, style={"color": "#383838"}), ],
                 style={"backgroundColor": "#D9D9D9", "position": "absolute",
                        "height": "33px", "width": "12%",
-                       "top": "150px", "left": "550px"}),
+                       "top": "150px", "left": "510px"}),
 
-            html.Div(style={"backgroundColor": "#C4C4C4", "position": "absolute",
-                            "height": "33px", "width": "12%",
-                            "top": "250px", "left": "210px"})
+            # html.Div(style={"backgroundColor": "#C4C4C4", "position": "absolute",
+            #                 "height": "33px", "width": "12%",
+            #                 "top": "250px", "left": "210px"})
         ]),
         html.Div([
-            html.Div([], style={"backgroundColor": "#C4C4C4", "position": "absolute",
-                                                               "height": "522px", "width": "55%",
-                                                               "top": "299px", "left": "210px",
-                                                               "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}),
+            # bot hit line chart
+            html.Div([dcc.Graph(id="bot_hit_line")], style={"backgroundColor": "#C4C4C4", "position": "absolute",
+                                                            "height": "522px", "width": "55%",
+                                                            "top": "299px", "left": "170px",
+                                                            "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}),
+            # Status code pie chart
             html.Div([dcc.Graph(id="status_pie_chart"), ],
                      style={"backgroundColor": "#C4C4C4", "position": "absolute",
                             "height": "220px", "width": "22.9%",
-                            "top": "299px", "left": "1575px",
+                            "top": "299px", "left": "1535px",
                             "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}),
+            # file type pie chart
             html.Div([dcc.Graph(id="filetype_chart"), ],
                      style={"backgroundColor": "#C4C4C4", "position": "absolute",
                             "height": "220px", "width": "22.9%",
-                            "top": "600px", "left": "1575px", "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}),
+                            "top": "600px", "left": "1535px", "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}),
 
         ], ),
 
+        # Intermediary for storing data to distribute to other charts
         dcc.Store(id="store_data"),
         html.Div([
             html.Div(
+                # Status code bar chart
                 [dcc.Graph(id="status_code_bar")], style={"backgroundColor": "#C4C4C4", "position": "absolute",
-                           "height": "522px", "width": "55%",
-                           "top": "859px", "left": "210px",
-                           "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
+                                                          "height": "522px", "width": "55%",
+                                                          "top": "859px", "left": "170px",
+                                                          "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
             ),
 
             html.Div(
-                [], style={"backgroundColor": "#C4C4C4", "position": "absolute",
-                           "height": "522px", "width": "55%",
-                           "top": "1420px", "left": "210px",
-                           "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
+                # File type bar chart
+                [dcc.Graph(id="file_type_bar")], style={"backgroundColor": "#C4C4C4", "position": "absolute",
+                                                        "height": "522px", "width": "55%",
+                                                        "top": "1420px", "left": "170px",
+                                                        "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
             ),
 
             html.Div(
+                # The table containing domain level directory, and frequency of crawler
                 [html.Table(dash_table.DataTable(
                     id="crawler_table",
                     columns=[{"name": name, "id": name} for name in crawler_columns],
-                    style_data=dict(backgroundColor="#FFFFF"),
-                    style_table=dict(top="0px", width="248%", line_color="#FFA63E", textAlign="center",
+                    style_data=dict(backgroundColor="#FFFFF", textAlign="center"),
+                    style_table=dict(top="0px", width="248%", line_color="#FFA63E",
                                      boxShadow="0px 0px 0px rgba(0, 0, 0, 0.25)"),
-                    style_header=dict(color="white", backgroundColor="#FFA63E", fontWeight="bold", textAlign="center")
+                    style_header=dict(color="white", backgroundColor="#FFA63E", fontWeight="bold", )
                 ))], style={"backgroundColor": "#FFFFF", "position": "absolute",
                             "height": "600px", "width": "22.9%",
-                            "top": "859px", "left": "1575px",
+                            "top": "859px", "left": "1535px",
                             "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
             )
         ])
@@ -112,12 +122,17 @@ app.layout = \
     )
 
 
+# This function updates the date drop down, anytime a new date is selected
 @app.callback(
     # Output('status_pie_chart', 'figure'),
     Output('select_date', 'options'),
     Input('select_date', 'value')
 )
 def update_date(date_input):
+    """
+    :param date_input:
+    :return: a list of dictionary containing the label and value for date
+    """
     stm_sql = "SELECT * FROM status_code"
 
     cs_data = get_cassandra_data(sql)
@@ -149,26 +164,32 @@ def get_data(bot, date):
     sql_stmt = "SELECT * FROM status_code;"
     crawler_freq_stmt = "SELECT * FROM crawler_frequency;"
     file_type_stmt = "SELECT * FROM file_type;"
+    bot_hit_stmt = "SELECT * FROM bot_hits;"
 
     crawler_freq_data = get_cassandra_data(crawler_freq_stmt)
     file_type_data = get_cassandra_data(file_type_stmt)
-    # print(file_type_data)
     c_data = get_cassandra_data(sql_stmt)
+    bot_hit_data = get_cassandra_data(bot_hit_stmt)
+    # print(bot_hit_data)
 
     c_data["status"] = c_data["status"].astype("str")
+
     crawler_df = crawler_freq_data[crawler_freq_data["crawler"] == bot]
     status_df = c_data[c_data["crawler"] == bot]
     file_type_df = file_type_data[file_type_data["crawler"] == bot]
+    bot_hit_df = bot_hit_data[bot_hit_data["crawler"] == bot]
 
     if bot == "All Bots":
         status_df = c_data
         crawler_df = crawler_freq_data
         file_type_df = file_type_data
+        bot_hit_df = bot_hit_data
 
     status_df["date"] = pd.to_datetime(status_df["date"])
     crawler_df["date"] = pd.to_datetime(crawler_df["date"])
     file_type_df["date"] = pd.to_datetime(file_type_df["date"])
-    print(file_type_df)
+    bot_hit_df["date"] = pd.to_datetime(bot_hit_df["date"])
+
     update_max = max(status_df["date"])
     update_min = min(status_df["date"])
 
@@ -179,14 +200,18 @@ def get_data(bot, date):
     status_df_pie = ""
     crawler_df_gran = ""
     file_type_df_pie = ""
+    bot_hit_df_line = ""
 
     # specify the period of data needed, and get the total frequency for that period
     if date == "Today":
+
         status_df_pie = status_df[status_df["date"] == pd.to_datetime(d_max)]
         status_df_pie = status_df_pie.groupby(["status", "hour"]).agg({"frequency": "sum"}).reset_index()
 
+        bot_hit_df_line = bot_hit_df[bot_hit_df["date"] == pd.to_datetime(d_max)]
+        bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "hour"]).agg({"frequency": "sum"}).reset_index()
+
         file_type_df_pie = file_type_df[file_type_df["date"] == pd.to_datetime(d_max)]
-        print(file_type_df)
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "hour"]).agg({"frequency": "sum"}).reset_index()
 
         crawler_df_gran = crawler_df[crawler_df["date"] == pd.to_datetime(d_max)]
@@ -194,36 +219,57 @@ def get_data(bot, date):
 
     elif date == "30days":
         status_df_pie = status_df[
-            (status_df["date"] >= pd.to_datetime(last_30days)) & (status_df["date"] <= pd.to_datetime(d_max))]
+            (status_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (status_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         status_df_pie["date"] = pd.to_datetime(status_df_pie["date"]).dt.tz_localize(None).dt.to_period("D").astype(
             "|S")
         status_df_pie = status_df_pie.groupby(["status", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        bot_hit_df_line = bot_hit_df[
+            (bot_hit_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (bot_hit_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+        bot_hit_df_line["date"] = pd.to_datetime(bot_hit_df_line["date"]).dt.tz_localize(None).dt.to_period("D").astype(
+            "|S")
+        bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "date"]).agg({"frequency": "sum"}).reset_index()
+
         file_type_df_pie = file_type_df[
-            (file_type_df["date"] >= pd.to_datetime(last_30days)) & (file_type_df["date"] <= pd.to_datetime(d_max))]
+            (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+
         file_type_df_pie["date"] = pd.to_datetime(file_type_df_pie["date"]).dt.tz_localize(None).dt.to_period(
             "D").astype("|S")
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "date"]).agg({"frequency": "sum"}).reset_index()
 
         crawler_df_gran = crawler_df[
-            (crawler_df["date"] >= pd.to_datetime(last_30days)) & (crawler_df["date"] <= pd.to_datetime(d_max))]
+            (crawler_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (crawler_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         crawler_df_gran = crawler_df_gran.groupby(["top_directory"]).agg({"frequency": "sum"}).reset_index()
 
+
     elif date == "year":
+
         status_df_pie = status_df[
-            (status_df["date"] >= pd.to_datetime(update_last_year)) & (status_df["date"] <= pd.to_datetime(d_max))]
+            (status_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
+                    status_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         status_df_pie["date"] = pd.to_datetime(status_df_pie["date"]).dt.to_period('M').astype("str")
+        print(status_df.dtypes)
+
         status_df_pie = status_df_pie.groupby(["status", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        bot_hit_df_line = bot_hit_df[
+            (bot_hit_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
+                    bot_hit_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+
+        bot_hit_df_line["date"] = pd.to_datetime(bot_hit_df_line["date"]).dt.to_period('M').astype("str")
+        bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "date"]).agg({"frequency": "sum"}).reset_index()
+        # print(bot_hit_df_line)
+
         file_type_df_pie = file_type_df[
-            (file_type_df["date"] >= pd.to_datetime(update_last_year)) & (
-                    file_type_df["date"] <= pd.to_datetime(d_max))]
+            (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
+                    file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         file_type_df_pie["date"] = pd.to_datetime(file_type_df_pie["date"]).dt.to_period('M').astype("str")
+        print(file_type_df)
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "date"]).agg({"frequency": "sum"}).reset_index()
 
         crawler_df_gran = crawler_df[
-            (crawler_df["date"] >= pd.to_datetime(update_last_year)) & (
-                    crawler_df["date"] <= pd.to_datetime(d_max))]
+            (crawler_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
+                    crawler_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         crawler_df_gran = crawler_df_gran.groupby(["top_directory"]).agg({"frequency": "sum"}).reset_index()
 
     crawler_df_gran.rename(columns={"top_directory": "Top directory", "frequency": "Total Bot Hits"}, inplace=True)
@@ -231,7 +277,8 @@ def get_data(bot, date):
     data_sets = {
         "status_df": status_df_pie.to_json(orient="split", date_format="iso"),
         "crawler_df": crawler_df_gran.to_json(orient="split", date_format="iso"),
-        "file_type": file_type_df_pie.to_json(orient="split", date_format="iso")
+        "file_type": file_type_df_pie.to_json(orient="split", date_format="iso"),
+        "bot_hits": bot_hit_df_line.to_json(orient="split", date_format="iso")
     }
 
     return json.dumps(data_sets)
@@ -242,8 +289,6 @@ def get_data(bot, date):
     Input('store_data', 'data')
 )
 def update_status_code_pie(needed_data):
-    colors = ["#23208A", "#BC0D68", "#6494FF", "#6494FF"]
-
     raw_status_data = json.loads(needed_data)
     ready_status_data = pd.read_json(raw_status_data["status_df"], orient="split")
     comp_hourly_df = ready_status_data.groupby(["status"]).agg({"frequency": "sum"}).reset_index()
@@ -263,12 +308,9 @@ def update_status_code_pie(needed_data):
     Input('store_data', 'data')
 )
 def update_file_type_pie(needed_data):
-    colors = ["#23208A", "#BC0D68", "#6494FF", "#6494FF"]
-
     raw_file_data = json.loads(needed_data)
     ready_file_data = pd.read_json(raw_file_data["file_type"], orient="split")
     comp_file_df = ready_file_data.groupby(["file_type"]).agg({"frequency": "sum"}).reset_index()
-    print(comp_file_df)
 
     # fig = px.pie(data_frame=comp_hourly_df, names="status", hole=.5, hover_data="frequency", col)
     # fig.udate_traces()
@@ -285,11 +327,9 @@ def update_file_type_pie(needed_data):
     Input('store_data', 'data'),
 )
 def update_status_code_line(needed_data):
-    colors = ["#23208A", "#BC0D68", "#6494FF", "#6494FF"]
     raw_status_data = json.loads(needed_data)
     ready_status_data = pd.read_json(raw_status_data["status_df"], orient="split")
 
-    print(ready_status_data)
     fig = px.bar(ready_status_data, x=ready_status_data.columns[1], y="frequency",
                  color=ready_status_data["status"].astype("str"), barmode="group", )
 
@@ -331,10 +371,13 @@ def update_status_code_line(needed_data):
     return fig
 
 
+@app.callback(
+    Output('file_type_bar', 'figure'),
+    Input('store_data', 'data'),
+)
 def filetype_bar_chart(needed_data):
-    colors = ["#23208A", "#BC0D68", "#6494FF", "#6494FF"]
     raw_status_data = json.loads(needed_data)
-    ready_status_data = pd.read_json(raw_status_data["status_df"], orient="split")
+    ready_status_data = pd.read_json(raw_status_data["file_type"], orient="split")
 
     fig = px.bar(ready_status_data, x=ready_status_data.columns[1], y="frequency",
                  color=ready_status_data["file_type"].astype("str"), barmode="group", )
@@ -371,6 +414,57 @@ def filetype_bar_chart(needed_data):
             itemclick="toggleothers",
             itemdoubleclick="toggle",
         ), )
+
+    return fig
+
+
+@app.callback(
+    Output('bot_hit_line', 'figure'),
+    Input('store_data', 'data'),
+)
+def bot_hit_chart(needed_data):
+    raw_status_data = json.loads(needed_data)
+    ready_status_data = pd.read_json(raw_status_data["bot_hits"], orient="split")
+    print(ready_status_data)
+    # print(ready_status_data)x
+
+    fig = px.line(ready_status_data, x=ready_status_data.columns[1], y="frequency",
+                  color=ready_status_data["crawler"])
+
+    fig.update_layout(
+        xaxis=dict(
+            showline=True,
+            showgrid=False,
+            showticklabels=True,
+            linecolor="rgb(204, 204, 204)",
+            linewidth=2,
+            ticks='outside',
+            fixedrange=True,
+            type="category",
+            tickformat="%b %d\n%Y",
+
+        ),
+        yaxis=dict(
+            # showgrid=False,
+            # zeroline=True,
+            linecolor="rgb(204, 204, 204)",
+            linewidth=2,
+            fixedrange=True,
+            showline=False,
+            showticklabels=True,
+            showgrid=True,
+            gridcolor="#D9D9D9"),
+        plot_bgcolor='white',
+        margin=dict(t=50, b=15, l=0, r=0, pad=4),
+        title_text="Bot Hit",
+        height=522,
+        legend=dict(
+            # Adjust click behavior
+            itemclick="toggleothers",
+            itemdoubleclick="toggle",
+        ), )
+
+    return fig
 
 
 @app.callback(
