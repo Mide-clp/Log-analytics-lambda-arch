@@ -5,10 +5,10 @@ CREATE KEYSPACE IF NOT EXISTS log_analytics WITH replication = {'class':'SimpleS
 use log_analytics;
 
 // Create tables
-// drop table status_code;
-// drop table file_type;
-// drop table crawler_frequency;
-// drop table bot_hits;
+drop table status_code;
+drop table file_type;
+drop table crawler_frequency;
+drop table bot_hits;
 
 CREATE TABLE IF NOT EXISTS status_code(status int, hour int, month int, year int, date text , crawler text, frequency int, PRIMARY KEY(status, hour, date));
 CREATE TABLE IF NOT EXISTS file_type(file_type text, hour int, month int, year int, date text, crawler text, frequency int, PRIMARY KEY(file_type, hour, date));
