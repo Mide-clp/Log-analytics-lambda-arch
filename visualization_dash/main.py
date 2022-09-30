@@ -155,12 +155,19 @@ def update_date(date_input):
     ]
 
 
+# This function get the necessary data from the database and store them in the data intermediary store
 @app.callback(
     Output('store_data', 'data'),
     Input('select_bot', 'value'),
     Input('select_date', 'value')
 )
 def get_data(bot, date):
+    """
+
+    :param bot:
+    :param date:
+    :return: A json containing the needed data for charts
+    """
     sql_stmt = "SELECT * FROM status_code;"
     crawler_freq_stmt = "SELECT * FROM crawler_frequency;"
     file_type_stmt = "SELECT * FROM file_type;"
@@ -174,17 +181,20 @@ def get_data(bot, date):
 
     c_data["status"] = c_data["status"].astype("str")
 
+    # filter for where data is equal to the current bot
     crawler_df = crawler_freq_data[crawler_freq_data["crawler"] == bot]
     status_df = c_data[c_data["crawler"] == bot]
     file_type_df = file_type_data[file_type_data["crawler"] == bot]
     bot_hit_df = bot_hit_data[bot_hit_data["crawler"] == bot]
 
+    # If all bot is selected, it should return all the data
     if bot == "All Bots":
         status_df = c_data
         crawler_df = crawler_freq_data
         file_type_df = file_type_data
         bot_hit_df = bot_hit_data
 
+    # format date
     status_df["date"] = pd.to_datetime(status_df["date"])
     crawler_df["date"] = pd.to_datetime(crawler_df["date"])
     file_type_df["date"] = pd.to_datetime(file_type_df["date"])
@@ -205,61 +215,72 @@ def get_data(bot, date):
     # specify the period of data needed, and get the total frequency for that period
     if date == "Today":
 
+        # data for status_type
         status_df_pie = status_df[status_df["date"] == pd.to_datetime(d_max)]
         status_df_pie = status_df_pie.groupby(["status", "hour"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for bot hit overtime
         bot_hit_df_line = bot_hit_df[bot_hit_df["date"] == pd.to_datetime(d_max)]
         bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "hour"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for file type
         file_type_df_pie = file_type_df[file_type_df["date"] == pd.to_datetime(d_max)]
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "hour"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for top domain with the most request
         crawler_df_gran = crawler_df[crawler_df["date"] == pd.to_datetime(d_max)]
         crawler_df_gran = crawler_df_gran.groupby(["top_directory"]).agg({"frequency": "sum"}).reset_index()
 
     elif date == "30days":
+        # data for status_type
         status_df_pie = status_df[
-            (status_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (status_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+            (status_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (
+                    status_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         status_df_pie["date"] = pd.to_datetime(status_df_pie["date"]).dt.tz_localize(None).dt.to_period("D").astype(
             "|S")
         status_df_pie = status_df_pie.groupby(["status", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for bot hit overtime
         bot_hit_df_line = bot_hit_df[
-            (bot_hit_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (bot_hit_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+            (bot_hit_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (
+                    bot_hit_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         bot_hit_df_line["date"] = pd.to_datetime(bot_hit_df_line["date"]).dt.tz_localize(None).dt.to_period("D").astype(
             "|S")
         bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for file type
         file_type_df_pie = file_type_df[
-            (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+            (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (
+                    file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
 
         file_type_df_pie["date"] = pd.to_datetime(file_type_df_pie["date"]).dt.tz_localize(None).dt.to_period(
             "D").astype("|S")
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for top domain with the most request
         crawler_df_gran = crawler_df[
-            (crawler_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (crawler_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
+            (crawler_df["date"].dt.tz_localize(None) >= pd.to_datetime(last_30days).tz_localize(None)) & (
+                    crawler_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         crawler_df_gran = crawler_df_gran.groupby(["top_directory"]).agg({"frequency": "sum"}).reset_index()
 
-
     elif date == "year":
-
+        # data for status_type
         status_df_pie = status_df[
             (status_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
                     status_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         status_df_pie["date"] = pd.to_datetime(status_df_pie["date"]).dt.to_period('M').astype("str")
-        print(status_df.dtypes)
 
         status_df_pie = status_df_pie.groupby(["status", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for bot hit overtime
         bot_hit_df_line = bot_hit_df[
             (bot_hit_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
                     bot_hit_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
 
         bot_hit_df_line["date"] = pd.to_datetime(bot_hit_df_line["date"]).dt.to_period('M').astype("str")
         bot_hit_df_line = bot_hit_df_line.groupby(["crawler", "date"]).agg({"frequency": "sum"}).reset_index()
-        # print(bot_hit_df_line)
 
+        # data for file type
         file_type_df_pie = file_type_df[
             (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
                     file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
@@ -267,6 +288,7 @@ def get_data(bot, date):
         print(file_type_df)
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "date"]).agg({"frequency": "sum"}).reset_index()
 
+        # data for top domain with the most request
         crawler_df_gran = crawler_df[
             (crawler_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
                     crawler_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
@@ -284,6 +306,7 @@ def get_data(bot, date):
     return json.dumps(data_sets)
 
 
+# This function updates the pie chart status code in the dashboard
 @app.callback(
     Output('status_pie_chart', 'figure'),
     Input('store_data', 'data')
@@ -293,9 +316,6 @@ def update_status_code_pie(needed_data):
     ready_status_data = pd.read_json(raw_status_data["status_df"], orient="split")
     comp_hourly_df = ready_status_data.groupby(["status"]).agg({"frequency": "sum"}).reset_index()
 
-    # fig = px.pie(data_frame=comp_hourly_df, names="status", hole=.5, hover_data="frequency", col)
-    # fig.udate_traces()
-
     fig = go.Figure(data=[go.Pie(labels=comp_hourly_df["status"], values=comp_hourly_df["frequency"], hole=0.4, )])
     fig.update_layout(margin=dict(t=50, b=15, l=0, r=0, pad=4), title_text="Status code", height=220)
     fig.update_traces(hoverinfo="label+percent", textinfo="value", textfont_size=10, marker=dict(colors=colors))
@@ -303,6 +323,7 @@ def update_status_code_pie(needed_data):
     return fig
 
 
+# This function updates the pie chart file type in the dashboard
 @app.callback(
     Output('filetype_chart', 'figure'),
     Input('store_data', 'data')
@@ -312,9 +333,6 @@ def update_file_type_pie(needed_data):
     ready_file_data = pd.read_json(raw_file_data["file_type"], orient="split")
     comp_file_df = ready_file_data.groupby(["file_type"]).agg({"frequency": "sum"}).reset_index()
 
-    # fig = px.pie(data_frame=comp_hourly_df, names="status", hole=.5, hover_data="frequency", col)
-    # fig.udate_traces()
-
     fig = go.Figure(data=[go.Pie(labels=comp_file_df["file_type"], values=comp_file_df["frequency"], hole=0.4, )])
     fig.update_layout(margin=dict(t=50, b=15, l=0, r=0, pad=4), title_text="File type", height=220)
     fig.update_traces(hoverinfo="label+percent", textinfo="value", textfont_size=10, marker=dict(colors=colors))
@@ -322,6 +340,7 @@ def update_file_type_pie(needed_data):
     return fig
 
 
+# The function updates the status code bar chart
 @app.callback(
     Output('status_code_bar', 'figure'),
     Input('store_data', 'data'),
@@ -371,6 +390,7 @@ def update_status_code_line(needed_data):
     return fig
 
 
+# Thus function updates the file type bar chart
 @app.callback(
     Output('file_type_bar', 'figure'),
     Input('store_data', 'data'),
@@ -418,6 +438,7 @@ def filetype_bar_chart(needed_data):
     return fig
 
 
+# This function updates the bot hit overtime
 @app.callback(
     Output('bot_hit_line', 'figure'),
     Input('store_data', 'data'),
@@ -467,6 +488,7 @@ def bot_hit_chart(needed_data):
     return fig
 
 
+# This function update the domain top directory and the number of hits
 @app.callback(
     # Output('status_pie_chart', 'figure'),
     Output('crawler_table', 'data'),
