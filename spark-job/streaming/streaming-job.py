@@ -10,6 +10,7 @@ from stream_write import write_to_cassandra_status_code, write_to_cassandra_craw
 TOPIC = "log_flow"
 
 
+
 if __name__ == "__main__":
     spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
         "log-analytics").getOrCreate()
@@ -36,9 +37,11 @@ if __name__ == "__main__":
     #     .outputMode("append") \
     #     .start(path="hdfs://namenode:8020/data/")
 
+
     daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("month"), func.col("year"),
                                      func.col("crawler"), func.col("date")) \
         .groupby("status", "hour", "month", "year", "date", "crawler").agg(func.count("status").alias("frequency"))
+
 
     file_type_data = crawler_df.withColumn("file_type", func.regexp_extract("endpoint",
                                                                             r"\.(css|jpg|PHP|html|png|gif|jpeg|json|js)",
@@ -51,6 +54,7 @@ if __name__ == "__main__":
                                                                                                            "year",
                                                                                                            "date",
                                                                                                            "crawler").agg(
+
         func.count("file_type").alias("frequency"))
 
     page_crawler = crawler_df.withColumn("top_directory", func.regexp_extract("endpoint", "(\/m\/\w+|\/\w+)", 1))
@@ -91,7 +95,6 @@ if __name__ == "__main__":
         .outputMode("update") \
         .start()
 
-    spark.streams.awaitAnyTermination()
     # "confirm.truncate"
     # crawler_df.awaitTermination()
     spark.stop()
