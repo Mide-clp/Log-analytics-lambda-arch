@@ -36,6 +36,7 @@ if __name__ == "__main__":
     #     .outputMode("append") \
     #     .start(path="hdfs://namenode:8020/data/")
 
+
     daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("month"), func.col("year"),
                                      func.col("crawler"), func.col("date")) \
         .groupby("status", "hour", "month", "year", "date", "crawler").agg(func.count("status").alias("frequency"))
@@ -92,6 +93,7 @@ if __name__ == "__main__":
         .start()
 
     spark.streams.awaitAnyTermination()
+
     # "confirm.truncate"
     # crawler_df.awaitTermination()
     spark.stop()

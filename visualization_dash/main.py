@@ -1,5 +1,4 @@
 import datetime
-
 from dash import Dash, html, Input, Output, dcc, dash_table
 import json
 import plotly.express as px
@@ -11,11 +10,14 @@ from read_cassandra import get_cassandra_data
 app = Dash(__name__)
 
 sql = "SELECT * FROM status_code"
+
 data = get_cassandra_data(sql)
+
 data["date"] = pd.to_datetime(data["date"])
 
 d_max = max(data["date"])
 d_min = min(data["date"])
+
 last_30days = d_max - timedelta(days=30)
 last_year = d_max - timedelta(weeks=52)
 
@@ -26,6 +28,7 @@ colors = ["#A424F4", "#143CFC", "#04E474", "#D0EAFC", "#FCBC04", "#FC6CB4", "#FC
 app.layout = \
     html.Div([
         # The header
+
         html.Div([
             html.H1("Log file Analyzer", style={"position": "absolute", "height": "70px",
                                                 "width": "100%", "top": "20px",
@@ -34,6 +37,7 @@ app.layout = \
                   "height": "113px", "width": "100%",
                   "top": "0px"}),
         html.Div([
+
             # Crawler selector
             html.Div([dcc.Dropdown(["Googlebot Desktop", "Googlebot Smartphone", "Bingbot Desktop", "All Bots"],
                                    id="select_bot",
@@ -44,6 +48,7 @@ app.layout = \
                             "top": "150px", "left": "170px"}),
 
             # Date option selector
+
             html.Div([dcc.Dropdown(options=([
                 {"label": f"Today ({pd.to_datetime(d_max).date()})",
                  "value": "Today"},
@@ -123,6 +128,7 @@ app.layout = \
     )
 
 
+
 # This function updates the date drop down, anytime a new date is selected
 @app.callback(
     # Output('status_pie_chart', 'figure'),
@@ -130,10 +136,12 @@ app.layout = \
     Input('select_date', 'value')
 )
 def update_date(date_input):
+
     """
     :param date_input:
     :return: a list of dictionary containing the label and value for date
     """
+
     stm_sql = "SELECT * FROM status_code"
 
     cs_data = get_cassandra_data(sql)
@@ -154,6 +162,7 @@ def update_date(date_input):
         {"label": f"Past year ({pd.to_datetime(update_last_year).date()} - {pd.to_datetime(update_max).date()})",
          "value": "year"}
     ]
+
 
 
 # This function get the necessary data from the database and store them in the data intermediary store
@@ -302,6 +311,7 @@ def get_data(bot, date):
         "crawler_df": crawler_df_gran.to_json(orient="split", date_format="iso"),
         "file_type": file_type_df_pie.to_json(orient="split", date_format="iso"),
         "bot_hits": bot_hit_df_line.to_json(orient="split", date_format="iso")
+
     }
 
     return json.dumps(data_sets)
@@ -364,7 +374,6 @@ def update_status_code_line(needed_data):
             fixedrange=True,
             type="category",
             tickformat="%b %d\n%Y",
-
         ),
         yaxis=dict(
             # showgrid=False,
@@ -386,6 +395,7 @@ def update_status_code_line(needed_data):
             itemdoubleclick="toggle",
         ),
         # showlegend=True
+
     )
 
     return fig

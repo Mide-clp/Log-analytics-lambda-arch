@@ -34,3 +34,5 @@ def get_cassandra_data(stmt):
 
 
 # data = get_cassandra_data(sql)
+
+
