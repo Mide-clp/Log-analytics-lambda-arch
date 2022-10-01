@@ -98,7 +98,8 @@ app.layout = \
                 [dcc.Graph(id="file_type_bar")], style={"backgroundColor": "#C4C4C4", "position": "absolute",
                                                         "height": "522px", "width": "55%",
                                                         "top": "1420px", "left": "170px",
-                                                        "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
+                                                        "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)",
+                                                        "bottom": "500px"}
             ),
 
             html.Div(
@@ -111,7 +112,7 @@ app.layout = \
                                      boxShadow="0px 0px 0px rgba(0, 0, 0, 0.25)"),
                     style_header=dict(color="white", backgroundColor="#FFA63E", fontWeight="bold", )
                 ))], style={"backgroundColor": "#FFFFF", "position": "absolute",
-                            "height": "600px", "width": "22.9%",
+                            "height": "965px", "width": "24.6%",
                             "top": "859px", "left": "1535px",
                             "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
             )
