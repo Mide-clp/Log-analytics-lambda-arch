@@ -4,11 +4,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as func
 from pyspark.sql.types import TimestampType
 from stream_utils import select_crawlers, parse_date_and_time, parse_datetime, format_logData
-from stream_write import write_to_cassandra_status_code, write_to_cassandra_crawler, write_to_cassandra_bot_hit,\
+from stream_write import write_to_cassandra_status_code, write_to_cassandra_crawler, write_to_cassandra_bot_hit, \
     write_to_cassandra_file_type
 
 TOPIC = "log_flow"
-
 
 if __name__ == "__main__":
     spark = SparkSession.builder.master("local[*]").config("dfs.client.use.datanode.hostname", "true").appName(
@@ -35,7 +34,6 @@ if __name__ == "__main__":
     #     .option("checkpointLocation", "checkpoint") \
     #     .outputMode("append") \
     #     .start(path="hdfs://namenode:8020/data/")
-
 
     daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("month"), func.col("year"),
                                      func.col("crawler"), func.col("date")) \
@@ -87,7 +85,7 @@ if __name__ == "__main__":
         .start()
 
     daily_status.writeStream \
-        .option("checkpointLocation", "tmp/checkpoint") \
+        .option("checkpointLocation", "tmp/stream/checkpoint") \
         .foreachBatch(write_to_cassandra_status_code) \
         .outputMode("update") \
         .start()
