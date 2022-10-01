@@ -33,26 +33,4 @@ def get_cassandra_data(stmt):
     return df
 
 
-data = get_cassandra_data(sql)
-
-# data["date"] = pd.to_datetime(data["date"])
-# print(data)
-# d_max = max(data["date"])
-# d_min = min(data["date"])
-# # print(pd.to_datetime(d_max).date())
-# print(d_max)
-#
-# last_30days = d_max - timedelta(days=30)
-# last_year = d_max-timedelta(weeks=52)
-# print(last_year)
-# comp_df = data[(data["date"] >= pd.to_datetime(last_year)) & (data["date"] <= pd.to_datetime(d_max))]
-# print(comp_df)
-# print(last_30days)
-# print(last_year)
-
-
-
-# print(data)
-hourly_df = data[data["crawler"] == ""]
-# d = data.groupby(["status"]).agg({"count": "sum"}).reset_index()
-# print(d)
+# data = get_cassandra_data(sql)
