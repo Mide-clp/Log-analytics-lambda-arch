@@ -6,13 +6,24 @@ use log_analytics;
 
 // Create tables
 
-drop table status_code;
-drop table file_type;
-drop table crawler_frequency;
-drop table bot_hits;
+drop table IF EXISTS status_code_realtime;
+drop table IF EXISTS file_type_realtime;
+drop table IF EXISTS crawler_frequency_realtime;
+drop table IF EXISTS bot_hits_realtime;
 
-CREATE TABLE IF NOT EXISTS status_code(status int, hour int, month int, year int, date text , crawler text, frequency int, PRIMARY KEY(status, hour, date));
-CREATE TABLE IF NOT EXISTS file_type(file_type text, hour int, month int, year int, date text, crawler text, frequency int, PRIMARY KEY(file_type, hour, date));
-CREATE TABLE IF NOT EXISTS crawler_frequency(hour int, month int, year int, crawler text, date text, top_directory text, frequency int, PRIMARY KEY(top_directory, hour, date));
-CREATE TABLE IF NOT EXISTS bot_hits(hour int, month int, year int, crawler text, date text, frequency int, PRIMARY KEY(hour, date));
+drop table IF EXISTS status_code;
+drop table IF EXISTS file_type;
+drop table IF EXISTS crawler_frequency;
+drop table IF EXISTS bot_hits;
 
+// Realtime job tables
+CREATE TABLE IF NOT EXISTS status_code_realtime(status int, hour int, month int, year int, date text , crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(status, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS file_type_realtime(file_type text, hour int, month int, year int, date text, crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(file_type, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS crawler_frequency_realtime(hour int, month int, year int, crawler text, date text, top_directory text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(top_directory, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS bot_hits_realtime(hour int, month int, year int, crawler text, date text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(hour, date, crawler));
+
+// batch job tables
+CREATE TABLE IF NOT EXISTS status_code(status int, hour int, month int, year int, date text , crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(status, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS file_type(file_type text, hour int, month int, year int, date text, crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(file_type, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS crawler_frequency(hour int, month int, year int, crawler text, date text, top_directory text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(top_directory, hour, date, crawler));
+CREATE TABLE IF NOT EXISTS bot_hits(hour int, month int, year int, crawler text, date text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(hour, date, crawler));
