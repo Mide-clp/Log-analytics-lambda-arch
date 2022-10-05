@@ -15,8 +15,12 @@ data = get_cassandra_data(sql)
 
 data["date"] = pd.to_datetime(data["date"])
 
-d_max = max(data["date"])
-d_min = min(data["date"])
+try:
+    d_max = max(data["date"])
+    d_min = min(data["date"])
+except ValueError as e:
+    d_max = datetime.datetime.now()
+    d_min = datetime.datetime.now()
 
 last_30days = d_max - timedelta(days=30)
 last_year = d_max - timedelta(weeks=52)
@@ -128,7 +132,6 @@ app.layout = \
     )
 
 
-
 # This function updates the date drop down, anytime a new date is selected
 @app.callback(
     # Output('status_pie_chart', 'figure'),
@@ -136,7 +139,6 @@ app.layout = \
     Input('select_date', 'value')
 )
 def update_date(date_input):
-
     """
     :param date_input:
     :return: a list of dictionary containing the label and value for date
@@ -162,7 +164,6 @@ def update_date(date_input):
         {"label": f"Past year ({pd.to_datetime(update_last_year).date()} - {pd.to_datetime(update_max).date()})",
          "value": "year"}
     ]
-
 
 
 # This function get the necessary data from the database and store them in the data intermediary store
@@ -460,8 +461,10 @@ def bot_hit_chart(needed_data):
     print(ready_status_data)
     # print(ready_status_data)x
 
-    fig = px.line(ready_status_data, x=ready_status_data.columns[1], y="frequency",
+    fig = px.scatter(ready_status_data, x=ready_status_data.columns[1], y="frequency",
                   color=ready_status_data["crawler"])
+
+
 
     fig.update_layout(
         xaxis=dict(
