@@ -4,8 +4,7 @@ CREATE KEYSPACE IF NOT EXISTS log_analytics WITH replication = {'class':'SimpleS
 // To use a keyspace
 use log_analytics;
 
-// Create tables
-
+// drop tables
 drop table IF EXISTS status_code_realtime;
 drop table IF EXISTS file_type_realtime;
 drop table IF EXISTS crawler_frequency_realtime;
@@ -16,6 +15,7 @@ drop table IF EXISTS file_type;
 drop table IF EXISTS crawler_frequency;
 drop table IF EXISTS bot_hits;
 
+// Create tables
 // Realtime job tables
 CREATE TABLE IF NOT EXISTS status_code_realtime(status int, hour int, month int, year int, date text , crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(status, hour, date, crawler));
 CREATE TABLE IF NOT EXISTS file_type_realtime(file_type text, hour int, month int, year int, date text, crawler text, frequency int, current_timestamp TIMESTAMP, PRIMARY KEY(file_type, hour, date, crawler));
