@@ -4,15 +4,15 @@ import json
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from datetime import timedelta
-from read_cassandra import get_cassandra_data
+from datetime import timedelta, date
+from read_cassandra import get_cassandra_data, join_real_batch_data
 
 app = Dash(__name__)
 
 sql = "SELECT * FROM status_code"
 
 data = get_cassandra_data(sql)
-
+pd.options.display.float_format = '{:,.2f}'.format
 data["date"] = pd.to_datetime(data["date"])
 
 try:
@@ -116,12 +116,16 @@ app.layout = \
                 [html.Table(dash_table.DataTable(
                     id="crawler_table",
                     columns=[{"name": name, "id": name} for name in crawler_columns],
-                    style_data=dict(backgroundColor="#FFFFF", textAlign="center"),
-                    style_table=dict(top="0px", width="248%", line_color="#FFA63E",
-                                     boxShadow="0px 0px 0px rgba(0, 0, 0, 0.25)"),
-                    style_header=dict(color="white", backgroundColor="#FFA63E", fontWeight="bold", )
+                    style_data=dict(backgroundColor="#FFFFF", textAlign="center", left=500,  size=40,),
+                    style_table=dict(top="0px", width="546px", line_color="#FFA63E",
+                                     boxShadow="0px 0px 0px rgba(0, 0, 0, 0.25)", height="700px", overflowY="auto",
+                                     ),
+                    style_header=dict(color="white", backgroundColor="#FFA63E", fontWeight="bold", textAlign="center",),
+                    fixed_rows={'headers': True},
+                    page_action='none',
+                    # fill_width=False
                 ))], style={"backgroundColor": "#FFFFF", "position": "absolute",
-                            "height": "965px", "width": "24.6%",
+                            "height": "705px", "width": "22.9%",
                             "top": "859px", "left": "1535px",
                             "boxShadow": "0px 1px 4px rgba(0, 0, 0, 0.25)"}
             )
@@ -179,28 +183,23 @@ def get_data(bot, date):
     :param date:
     :return: A json containing the needed data for charts
     """
-    sql_stmt = "SELECT * FROM status_code;"
-    crawler_freq_stmt = "SELECT * FROM crawler_frequency;"
-    file_type_stmt = "SELECT * FROM file_type;"
-    bot_hit_stmt = "SELECT * FROM bot_hits;"
 
-    crawler_freq_data = get_cassandra_data(crawler_freq_stmt)
-    file_type_data = get_cassandra_data(file_type_stmt)
-    c_data = get_cassandra_data(sql_stmt)
-    bot_hit_data = get_cassandra_data(bot_hit_stmt)
-    # print(bot_hit_data)
+    Status_code_data = join_real_batch_data("status_code", "status_code_realtime")
+    crawler_freq_data = join_real_batch_data("crawler_frequency", "crawler_frequency_realtime")
+    file_type_data = join_real_batch_data("file_type", "file_type_realtime")
+    bot_hit_data = join_real_batch_data("bot_hits", "bot_hits_realtime")
 
-    c_data["status"] = c_data["status"].astype("str")
+    Status_code_data["status"] = Status_code_data["status"].astype("str")
 
     # filter for where data is equal to the current bot
     crawler_df = crawler_freq_data[crawler_freq_data["crawler"] == bot]
-    status_df = c_data[c_data["crawler"] == bot]
+    status_df = Status_code_data[Status_code_data["crawler"] == bot]
     file_type_df = file_type_data[file_type_data["crawler"] == bot]
     bot_hit_df = bot_hit_data[bot_hit_data["crawler"] == bot]
 
     # If all bot is selected, it should return all the data
     if bot == "All Bots":
-        status_df = c_data
+        status_df = Status_code_data
         crawler_df = crawler_freq_data
         file_type_df = file_type_data
         bot_hit_df = bot_hit_data
@@ -296,7 +295,6 @@ def get_data(bot, date):
             (file_type_df["date"].dt.tz_localize(None) >= pd.to_datetime(update_last_year).tz_localize(None)) & (
                     file_type_df["date"].dt.tz_localize(None) <= pd.to_datetime(d_max).tz_localize(None))]
         file_type_df_pie["date"] = pd.to_datetime(file_type_df_pie["date"]).dt.to_period('M').astype("str")
-        print(file_type_df)
         file_type_df_pie = file_type_df_pie.groupby(["file_type", "date"]).agg({"frequency": "sum"}).reset_index()
 
         # data for top domain with the most request
@@ -458,15 +456,16 @@ def filetype_bar_chart(needed_data):
 def bot_hit_chart(needed_data):
     raw_status_data = json.loads(needed_data)
     ready_status_data = pd.read_json(raw_status_data["bot_hits"], orient="split")
-    print(ready_status_data)
-    # print(ready_status_data)x
 
     fig = px.scatter(ready_status_data, x=ready_status_data.columns[1], y="frequency",
-                  color=ready_status_data["crawler"])
+                     color=ready_status_data["crawler"])
 
+    fig2 = px.line(ready_status_data, x=ready_status_data.columns[1], y="frequency", color=ready_status_data["crawler"])
 
+    # fig2.update_traces(line=dict(color="rgba(50,50,50,0.2)"))
 
-    fig.update_layout(
+    fig3 = go.Figure(data=fig.data + fig2.data)
+    fig3.update_layout(
         xaxis=dict(
             showline=True,
             showgrid=False,
@@ -477,6 +476,7 @@ def bot_hit_chart(needed_data):
             fixedrange=True,
             type="category",
             tickformat="%b %d\n%Y",
+            title=ready_status_data.columns[1]
 
         ),
         yaxis=dict(
@@ -488,7 +488,8 @@ def bot_hit_chart(needed_data):
             showline=False,
             showticklabels=True,
             showgrid=True,
-            gridcolor="#D9D9D9"),
+            gridcolor="#D9D9D9",
+            title="frequency",),
         plot_bgcolor='white',
         margin=dict(t=50, b=15, l=0, r=0, pad=4),
         title_text="Bot Hit",
@@ -499,7 +500,7 @@ def bot_hit_chart(needed_data):
             itemdoubleclick="toggle",
         ), )
 
-    return fig
+    return fig3
 
 
 # This function update the domain top directory and the number of hits
@@ -510,7 +511,11 @@ def bot_hit_chart(needed_data):
 )
 def update_table_crawler(crawler_data):
     raw_crawler_data = json.loads(crawler_data)
+    # .map('{:,.0f}'.format)
+    print(raw_crawler_data)
     ready_crawler_data = pd.read_json(raw_crawler_data["crawler_df"], orient="split")
+    ready_crawler_data["Total Bot Hits"] = ready_crawler_data.apply(lambda x: "{:,}".format(x['Total Bot Hits']), axis=1)
+    print(ready_crawler_data)
 
     return ready_crawler_data.to_dict("records")
 
