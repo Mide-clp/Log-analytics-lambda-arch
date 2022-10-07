@@ -17,3 +17,4 @@ else:
 
 for msg in consumer:
     print(msg.value)
+
