@@ -36,7 +36,7 @@ run `python3 visualization_dash/main.py`
 ### Web UI
 - spark cluster - http://localhost:8080/
 - Hadoop - http://localhost:9870/
-- dashboard/visualization - http://localhost:9870/
+- dashboard/visualization - http://localhost:3032/
 - apache nifi - http://localhost:9090/
 
 ### Access image
