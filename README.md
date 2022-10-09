@@ -15,7 +15,7 @@ Stream log file from apache nifi  using kafka and zookeeper to  stream data to s
 
 ## Setup
 **This project requires you to have docker up and running**
-- To build docker image run `docker build -t log-analytics .`
+- To build docker image run `docker build -t log-viz .`
 - Run `docker-compose -f docker-compose.yaml` to start the resources needed
 - when docker-compose is up and running, run `bash ./setup.sh`
 
