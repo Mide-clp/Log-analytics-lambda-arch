@@ -521,4 +521,4 @@ def update_table_crawler(crawler_data):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3032)
+    app.run(port=3032, debug=True)

@@ -31,6 +31,8 @@ Stream log file from apache nifi  using kafka and zookeeper to  stream data to s
 ### Run batch job
 `docker exec spark-master /spark/bin/spark-submit  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 --master spark://localhost:7077 opt/spark_store/batch/batch-job.py`
 
+### visualization
+run `python3 visualization_dash/main.py`
 ### Web UI
 - spark cluster - http://localhost:8080/
 - Hadoop - http://localhost:9870/
