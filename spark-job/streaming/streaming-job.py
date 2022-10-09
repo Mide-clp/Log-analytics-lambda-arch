@@ -10,12 +10,12 @@ from stream_write import write_to_cassandra_status_code, write_to_cassandra_craw
 TOPIC = "log_flow"
 
 if __name__ == "__main__":
-    spark = SparkSession.builder.master("local[*]").appName("log-analytics").getOrCreate()
+    # spark = SparkSession.builder.master("local[*]").appName("log-analytics").getOrCreate()
 
-    # spark = SparkSession.builder.master("spark://spark-master:7077").config("dfs.client.use.datanode.hostname", "true")\
-    #     .config("spark.cores.max", "2") \
-    #     .appName(
-    #     "log-analytics").getOrCreate()
+    spark = SparkSession.builder.master("spark://spark-master:7077").config("dfs.client.use.datanode.hostname", "true")\
+        .config("spark.cores.max", "4") \
+        .appName(
+        "log-analytics").getOrCreate()
 
     df = spark.readStream \
         .format("kafka") \
@@ -37,9 +37,6 @@ if __name__ == "__main__":
         .option("checkpointLocation", "tmp/batch/checkpoint") \
         .outputMode("append") \
         .start(path="hdfs://namenode:8020/data/log_data/")
-
-        # hdfs://namenode:8020/data/log_data/
-        # data_log/
 
     daily_status = crawler_df.select(func.col("status"), func.col("hour"), func.col("month"), func.col("year"),
                                      func.col("crawler"), func.col("date")) \
@@ -101,9 +98,4 @@ if __name__ == "__main__":
     spark.streams.awaitAnyTermination()
 
     spark.stop()
-
-# spark-submit --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 ./spark-job/streaming/streaming-job.py
-
-# docker exec spark-master /spark/bin/spark-submit --master spark://localhost:7077 --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 opt/spark_store/streaming/streaming-job.py
-
 

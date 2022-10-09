@@ -4,7 +4,7 @@ import json
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from datetime import timedelta, date
+from datetime import timedelta
 from read_cassandra import get_cassandra_data, join_real_batch_data
 
 app = Dash(__name__)

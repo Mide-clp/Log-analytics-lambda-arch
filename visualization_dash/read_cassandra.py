@@ -9,7 +9,7 @@ from cassandra.query import dict_factory
 import pandas as pd
 
 try:
-    cluster = Cluster(["127.0.0.1"], port="9042")
+    cluster = Cluster(["localhost"], port="9042")
     session = cluster.connect("log_analytics")
 except Exception as e:
     print("Couldn't connect to the cassandra cluster")

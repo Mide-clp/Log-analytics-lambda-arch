@@ -63,6 +63,3 @@ if __name__ == "__main__":
     write_to_cassandra_status_code(daily_status)
     write_to_cassandra_file_type(file_type_daily)
 
-# docker exec spark-master /spark/bin/spark-submit  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 --master spark://localhost:7077 opt/spark_store/batch/batch-job.py
-
-# spark-submit  spark-job/batch/batch-job.py
