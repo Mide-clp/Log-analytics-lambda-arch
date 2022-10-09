@@ -4,7 +4,7 @@ import json
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from datetime import timedelta, date
+from datetime import timedelta
 from read_cassandra import get_cassandra_data, join_real_batch_data
 
 app = Dash(__name__)
@@ -521,4 +521,4 @@ def update_table_crawler(crawler_data):
 
 
 if __name__ == "__main__":
-    app.run(port=3032, debug=True)
+    app.run(host="0.0.0.0", port=3032)
