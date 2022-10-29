@@ -1,7 +1,7 @@
 # Log analytics using lambda architecture
 
 ## Overview
-Ever wonder what kind of bots visits your website? This project helps you identify the major search engine bots that visits your website and the activities they perform on your website. This project was built using lambda architecture, combining both real-time and batch data pipeline together. \
+Ever wonder what kind of bots visits your website? TThis project helps you identify the major search engine bots that visit your website and the activities they perform on your website. This project was built using lambda architecture, combining both real-time and batch data pipelines. \
 `ps`: You can also configure this project to use other kafka producer, rather than the producer used by apache nifi  
 
 ## Architecture
